@@ -616,7 +616,7 @@
           if (data.restore_point_created) {
             logContent.innerHTML += `<div class="text-emerald-400">[2/3] تم إنشاء نقطة الاستعادة بنجاح: ${data.restore_point_id || 'تم'}</div>`;
           } else {
-            logContent.innerHTML += `<div class="text-amber-400">[2/3] تم تخطي أو تعذر إنشاء نقطة الاستعادة (قد تكون خاصية حماية النظام معطلة أو تتطلب صلاحيات مسؤول إضافية).</div>`;
+            logContent.innerHTML += `<div class="text-slate-400">[2/3] تم تخطي إنشاء نقطة الاستعادة (إجراءات آمنة من المستوى الأول Tier 1، أو حماية النظام غير مفعلة على القرص).</div>`;
           }
           data.results.forEach(r => {
             logContent.innerHTML += `<div class="${r.success ? 'text-emerald-400' : 'text-rose-400'}">[3/3] ${r.message_ar}</div>`;

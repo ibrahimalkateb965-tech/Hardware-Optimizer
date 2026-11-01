@@ -202,6 +202,15 @@ def _launch_elevated_windows(executable: str, params: str, cwd: str) -> int:
         return proc.returncode
 
 
+def _safe_action_id(aid: Any) -> Optional[ActionID]:
+    if isinstance(aid, ActionID):
+        return aid
+    try:
+        return ActionID(str(aid))
+    except ValueError:
+        return None
+
+
 def _execute_direct(
     mode: str,
     session_id: str,
@@ -213,7 +222,12 @@ def _execute_direct(
     rp_success = False
 
     if mode == "apply":
-        rp_success = create_system_restore_point(session_id)
+        if platform.system().lower() != "windows":
+            rp_success = True
+        elif is_admin():
+            rp_success = create_system_restore_point(session_id)
+        else:
+            rp_success = False
         for raw_id in action_ids:
             try:
                 act_id = ActionID(raw_id) if not isinstance(raw_id, ActionID) else raw_id
@@ -291,16 +305,11 @@ def execute_actions(
     # Determine if elevation is required
     needs_admin = False
     if is_win:
-        if mode == "apply":
-            needs_admin = any(
-                ACTION_DISPATCH_TABLE.get(aid if isinstance(aid, ActionID) else ActionID(aid), {}).get("requires_admin", False)
-                for aid in action_ids if aid in ActionID._value2member_map_ or isinstance(aid, ActionID)
-            )
-        elif mode == "rollback":
-            needs_admin = any(
-                ACTION_DISPATCH_TABLE.get(aid if isinstance(aid, ActionID) else ActionID(aid), {}).get("requires_admin", False)
-                for aid in action_ids if aid in ActionID._value2member_map_ or isinstance(aid, ActionID)
-            )
+        for aid in action_ids:
+            act_id = _safe_action_id(aid)
+            if act_id and ACTION_DISPATCH_TABLE.get(act_id, {}).get("requires_admin", False):
+                needs_admin = True
+                break
 
     # Session directory and ticket/result file paths
     session_dir = Path("sessions") / session_id

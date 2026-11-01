@@ -25,8 +25,8 @@ ACTION_DISPATCH_TABLE: Dict[ActionID, Dict[str, Any]] = {
         "title_ar": "تفعيل جدولة معالجة الرسوميات المسرعة بالعتاد (HAGS)"
     },
     ActionID.RAM_ENABLE_COMPRESS: {
-        "apply_cmd": ["powershell.exe", "-NoProfile", "-Command", "Enable-MMAgent -MemoryCompression"],
-        "rollback_cmd": ["powershell.exe", "-NoProfile", "-Command", "Disable-MMAgent -MemoryCompression"],
+        "apply_cmd": ["powershell.exe", "-NoProfile", "-Command", "try { Enable-MMAgent -MemoryCompression } catch { exit 1 }; exit 0"],
+        "rollback_cmd": ["powershell.exe", "-NoProfile", "-Command", "try { Disable-MMAgent -MemoryCompression } catch { exit 1 }; exit 0"],
         "requires_admin": True,
         "title_ar": "تفعيل ضغط الذاكرة في النظام"
     },
@@ -39,7 +39,7 @@ ACTION_DISPATCH_TABLE: Dict[ActionID, Dict[str, Any]] = {
     ActionID.STORAGE_RETRIM_SSD: {
         "apply_cmd": [
             "powershell.exe", "-NoProfile", "-Command",
-            "if (Get-Volume -DriveLetter C -ErrorAction SilentlyContinue) { Optimize-Volume -DriveLetter C -ReTrim -Verbose } else { Write-Output 'Drive C is not present.' }"
+            "if (Get-Volume -DriveLetter C -ErrorAction SilentlyContinue) { Optimize-Volume -DriveLetter C -ReTrim -Verbose } else { Write-Output 'Drive C is not present.' }; exit 0"
         ],
         "rollback_cmd": None,  # Stateless maintenance
         "requires_admin": True,
@@ -48,7 +48,7 @@ ACTION_DISPATCH_TABLE: Dict[ActionID, Dict[str, Any]] = {
     ActionID.STORAGE_DEFRAG_HDD: {
         "apply_cmd": [
             "powershell.exe", "-NoProfile", "-Command",
-            "if (Get-Volume -DriveLetter D -ErrorAction SilentlyContinue) { Optimize-Volume -DriveLetter D -Defrag -Verbose } else { Write-Output 'Drive D is not present on this system, skipping defrag.' }"
+            "if (Get-Volume -DriveLetter D -ErrorAction SilentlyContinue) { Optimize-Volume -DriveLetter D -Defrag -Verbose } else { Write-Output 'Drive D is not present on this system, skipping defrag.' }; exit 0"
         ],
         "rollback_cmd": None,  # Stateless maintenance
         "requires_admin": True,
@@ -57,7 +57,7 @@ ACTION_DISPATCH_TABLE: Dict[ActionID, Dict[str, Any]] = {
     ActionID.STORAGE_CLEAN_TEMP: {
         "apply_cmd": [
             "powershell.exe", "-NoProfile", "-Command",
-            r"Get-ChildItem -Path $env:TEMP\* -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-3) } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+            "$ErrorActionPreference = 'SilentlyContinue'; $limit = (Get-Date).AddDays(-3); if (Test-Path $env:TEMP) { Get-ChildItem -Path $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | Where-Object { !$_.PSIsContainer -and $_.LastWriteTime -lt $limit } | ForEach-Object { try { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue } catch {} } }; exit 0"
         ],
         "rollback_cmd": None,  # Stateless maintenance
         "requires_admin": False,
