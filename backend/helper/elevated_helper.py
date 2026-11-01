@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import platform
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -11,9 +12,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from backend.helper.allowlist import ACTION_DISPATCH_TABLE
-from backend.schemas import ActionID, ActionResult
+from backend.schemas import SESSION_ID_PATTERN, ActionID, ActionResult
 
 logger = logging.getLogger("elevated_helper")
+
+
+def _require_safe_session_id(session_id: Any) -> str:
+    """Rejects session IDs that could escape the sessions/ folder or break out of a PowerShell string.
+    Enforced here as well as in the API because the elevated process reads a user-writable ticket."""
+    if not isinstance(session_id, str) or not re.fullmatch(SESSION_ID_PATTERN, session_id):
+        raise ValueError(f"Invalid session_id: {session_id!r}")
+    return session_id
 
 
 def is_admin() -> bool:
@@ -32,9 +41,10 @@ def create_system_restore_point(session_id: str) -> bool:
         logger.info(f"Non-Windows environment: simulated System Restore Point for {session_id}")
         return True
 
+    session_id = _require_safe_session_id(session_id)
     cmd = [
         "powershell.exe", "-NoProfile", "-Command",
-        f'Checkpoint-Computer -Description "HardwareOptimizer_{session_id}" -RestorePointType "MODIFY_SETTINGS"'
+        f"Checkpoint-Computer -Description 'HardwareOptimizer_{session_id}' -RestorePointType 'MODIFY_SETTINGS'"
     ]
     try:
         proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
@@ -132,6 +142,11 @@ def rollback_action(action_id: ActionID) -> ActionResult:
         )
 
 
+def _ps_quote(value: str) -> str:
+    """Wraps a value as a PowerShell single-quoted literal (no variable or subexpression expansion)."""
+    return "'" + value.replace("'", "''") + "'"
+
+
 def _launch_elevated_windows(executable: str, params: str, cwd: str) -> int:
     """Launches an elevated process on Windows via ShellExecuteExW or Start-Process and waits for it."""
     try:
@@ -169,9 +184,12 @@ def _launch_elevated_windows(executable: str, params: str, cwd: str) -> int:
         sei.lpDirectory = cwd
         sei.nShow = 1  # SW_SHOWNORMAL
         
-        res = ctypes.windll.shell32.ShellExecuteExW(ctypes.byref(sei))
+        # use_last_error captures the error code immediately, before the runtime can overwrite it;
+        # otherwise a UAC "No" (1223) could be missed and trigger a second prompt via the fallback.
+        shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+        res = shell32.ShellExecuteExW(ctypes.byref(sei))
         if not res:
-            err = ctypes.GetLastError()
+            err = ctypes.get_last_error()
             if err == 1223:  # ERROR_CANCELLED (user clicked "No" on UAC prompt)
                 raise PermissionError("UAC_CANCELLED")
             raise RuntimeError(f"ShellExecuteExW failed with code {err}")
@@ -192,7 +210,8 @@ def _launch_elevated_windows(executable: str, params: str, cwd: str) -> int:
         logger.warning(f"ShellExecuteExW failed, falling back to powershell Start-Process: {e}")
         cmd = [
             "powershell.exe", "-NoProfile", "-Command",
-            f"Start-Process -FilePath '{executable}' -ArgumentList '{params}' -Verb RunAs -Wait"
+            f"Start-Process -FilePath {_ps_quote(executable)} -ArgumentList {_ps_quote(params)} "
+            f"-WorkingDirectory {_ps_quote(cwd)} -Verb RunAs -Wait"
         ]
         proc = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, check=False)
         if proc.returncode != 0:
@@ -218,6 +237,7 @@ def _execute_direct(
     result_file: Optional[Path] = None
 ) -> Dict[str, Any]:
     """Internal synchronous runner for actions (called directly or from elevated helper)."""
+    session_id = _require_safe_session_id(session_id)
     results: List[ActionResult] = []
     rp_success = False
 
@@ -299,6 +319,7 @@ def execute_actions(
     If running non-elevated on Windows and any action requires admin privileges,
     spawns elevated_helper via Windows UAC dialog (runas) and collects execution output.
     """
+    session_id = _require_safe_session_id(session_id)
     is_win = platform.system().lower() == "windows"
     admin = is_admin()
 
@@ -416,9 +437,13 @@ def main():
 
     session_id = ticket.get("session_id", "sess_unknown")
     action_ids_raw = ticket.get("action_ids", [])
-    
+
     result_file = payload_path.parent / f"result_{args.mode}.json"
-    out = _execute_direct(args.mode, session_id, action_ids_raw, result_file)
+    try:
+        out = _execute_direct(args.mode, session_id, action_ids_raw, result_file)
+    except ValueError as e:
+        print(json.dumps({"error": str(e)}))
+        sys.exit(1)
 
     # Print output to stdout
     print(json.dumps({

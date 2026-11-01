@@ -2,6 +2,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
+# session_id flows into filesystem paths and the elevated PowerShell command line,
+# so only plain identifier characters are accepted (no quotes, $, dots, slashes or drive colons).
+SESSION_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+
 
 class SubsystemName(str, Enum):
     CPU = "CPU"
@@ -101,7 +105,7 @@ class RecommendationsResponse(BaseModel):
 
 
 class ApplyRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(pattern=SESSION_ID_PATTERN)
     selected_action_ids: List[ActionID]
     target_identifiers: Optional[Dict[str, str]] = None
 
@@ -123,7 +127,7 @@ class ApplyResponse(BaseModel):
 
 
 class RollbackRequest(BaseModel):
-    session_id: str
+    session_id: str = Field(pattern=SESSION_ID_PATTERN)
     target_action_ids: Optional[List[ActionID]] = None
 
 
