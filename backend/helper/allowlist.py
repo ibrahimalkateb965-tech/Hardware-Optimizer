@@ -37,13 +37,19 @@ ACTION_DISPATCH_TABLE: Dict[ActionID, Dict[str, Any]] = {
         "title_ar": "تفعيل بروتوكول TRIM لأقراص SSD"
     },
     ActionID.STORAGE_RETRIM_SSD: {
-        "apply_cmd": ["powershell.exe", "-NoProfile", "-Command", "Optimize-Volume -DriveLetter C -ReTrim"],
+        "apply_cmd": [
+            "powershell.exe", "-NoProfile", "-Command",
+            "if (Get-Volume -DriveLetter C -ErrorAction SilentlyContinue) { Optimize-Volume -DriveLetter C -ReTrim -Verbose } else { Write-Output 'Drive C is not present.' }"
+        ],
         "rollback_cmd": None,  # Stateless maintenance
         "requires_admin": True,
         "title_ar": "إجراء ReTrim للقرص C"
     },
     ActionID.STORAGE_DEFRAG_HDD: {
-        "apply_cmd": ["powershell.exe", "-NoProfile", "-Command", "Optimize-Volume -DriveLetter D -Defrag"],
+        "apply_cmd": [
+            "powershell.exe", "-NoProfile", "-Command",
+            "if (Get-Volume -DriveLetter D -ErrorAction SilentlyContinue) { Optimize-Volume -DriveLetter D -Defrag -Verbose } else { Write-Output 'Drive D is not present on this system, skipping defrag.' }"
+        ],
         "rollback_cmd": None,  # Stateless maintenance
         "requires_admin": True,
         "title_ar": "إلغاء تجزئة القرص الميكانيكي D"

@@ -17,7 +17,12 @@ from backend.ai.client import OpenCodeGoClient
 from backend.collectors.orchestrator import TelemetryOrchestrator
 from backend.config import FRONTEND_DIST_DIR, settings
 from backend.db.ledger import StateLedger
-from backend.helper.elevated_helper import apply_action, create_system_restore_point, rollback_action
+from backend.helper.elevated_helper import (
+    apply_action,
+    create_system_restore_point,
+    execute_actions,
+    rollback_action,
+)
 from backend.rules.engine import RulesEngine
 from backend.schemas import (
     ActionID,
@@ -175,23 +180,25 @@ async def apply_optimizations(
     req: ApplyRequest,
     _=Depends(verify_session_token)
 ):
-    """Executes validated allowlisted actions with automatic System Restore Point."""
+    """Executes validated allowlisted actions with automatic System Restore Point and UAC elevation."""
     if not req.selected_action_ids:
         raise HTTPException(status_code=400, detail="No optimization actions selected.")
 
-    # 1. System Restore Point
-    rp_created = create_system_restore_point(req.session_id)
-    
-    # 2. Execute actions
-    results: List[ActionResult] = []
-    all_success = True
-    for action_id in req.selected_action_ids:
-        res = apply_action(action_id)
-        results.append(res)
-        if not res.success:
-            all_success = False
+    # 1. Execute actions workflow (handles UAC elevation, restore point, and allowlist execution)
+    res_data = execute_actions(
+        mode="apply",
+        session_id=req.session_id,
+        action_ids=req.selected_action_ids
+    )
 
-    # 3. Record in ledger
+    results: List[ActionResult] = [
+        ActionResult(**r) if isinstance(r, dict) else r for r in res_data.get("results", [])
+    ]
+    all_success = res_data.get("all_success", False)
+    rp_created = res_data.get("restore_point_created", False)
+    rp_id = res_data.get("restore_point_id")
+
+    # 2. Record in ledger
     ledger.record_applied_actions(req.session_id, results, restore_point_created=rp_created)
     
     # Record post-apply snapshot
@@ -208,7 +215,7 @@ async def apply_optimizations(
         success=all_success,
         results=results,
         restore_point_created=rp_created,
-        restore_point_id=f"HardwareOptimizer_{req.session_id}" if rp_created else None
+        restore_point_id=rp_id
     )
 
 
@@ -217,7 +224,7 @@ async def rollback_optimizations(
     req: RollbackRequest,
     _=Depends(verify_session_token)
 ):
-    """Reverts applied optimizations for a session."""
+    """Reverts applied optimizations for a session with UAC elevation support."""
     target_actions = req.target_action_ids
     if not target_actions:
         # Load from ledger history
@@ -227,19 +234,24 @@ async def rollback_optimizations(
             raise HTTPException(status_code=404, detail="Session not found in ledger.")
         target_actions = [ActionID(a["action_id"]) for a in session_info.get("actions", [])]
 
-    results: List[ActionResult] = []
-    reverted_ids: List[ActionID] = []
-    for act_id in target_actions:
-        res = rollback_action(act_id)
-        results.append(res)
-        if res.success:
-            reverted_ids.append(act_id)
+    # Execute rollback workflow
+    res_data = execute_actions(
+        mode="rollback",
+        session_id=req.session_id,
+        action_ids=target_actions
+    )
+
+    results: List[ActionResult] = [
+        ActionResult(**r) if isinstance(r, dict) else r for r in res_data.get("results", [])
+    ]
+    all_success = res_data.get("all_success", False)
+    reverted_ids = [r.action_id for r in results if r.success]
 
     ledger.mark_actions_rolled_back(req.session_id, reverted_ids)
 
     return RollbackResponse(
         session_id=req.session_id,
-        success=all(r.success for r in results),
+        success=all_success,
         results=results
     )
 

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Windows Hardware Diagnostics & Optimizer</title>
+  <!-- Tailwind CSS & Lucide Icons CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Cairo', 'Segoe UI', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            },
+            darkBg: '#0f172a',
+            darkCard: '#1e293b',
+            darkBorder: '#334155'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Cairo', 'Segoe UI', sans-serif; }
+    .code-font { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="cpu" class="w-6 h-6 text-slate-950 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            Windows Hardware Optimizer
+            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">GLM-5.3-Flash</span>
+          </h1>
+          <p class="text-xs text-slate-400">نظام التشخيص العتادي المتقدم والتحسين الآمن القابل للتراجع</p>
+        </div>
+      </div>
+
+      <!-- Live Session Status & Controls -->
+      <div class="flex items-center gap-4">
+        <div class="hidden sm:flex items-center gap-2 text-xs font-mono bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="sessionStatusText" class="text-slate-300">متصل (127.0.0.1)</span>
+        </div>
+        <button id="rescanBtn" onclick="runFullScan()" class="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-semibold rounded-lg shadow transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span>إعادة الفحص الذكي</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 space-x-reverse overflow-x-auto text-sm font-semibold border-t border-slate-800/60 py-2">
+      <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+        <i data-lucide="activity" class="w-4 h-4"></i>
+        <span>لوحة القيادة والمؤشرات</span>
+      </button>
+      <button onclick="switchTab('diagnostics')" id="tab-diagnostics" class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+        <i data-lucide="microchip" class="w-4 h-4"></i>
+        <span>جرد العتاد والاختناقات</span>
+      </button>
+      <button onclick="switchTab('recommendations')" id="tab-recommendations" class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+        <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <span>التحسينات الموصى بها</span>
+        <span id="recsBadge" class="hidden text-xs bg-emerald-500 text-slate-950 font-bold px-1.5 py-0.2 rounded-full">0</span>
+      </button>
+      <button onclick="switchTab('apply')" id="tab-apply" class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+        <span>تطبيق التحسينات</span>
+      </button>
+      <button onclick="switchTab('beforeAfter')" id="tab-beforeAfter" class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+        <i data-lucide="git-compare" class="w-4 h-4"></i>
+        <span>المقارنة قبل وبعد</span>
+      </button>
+      <button onclick="switchTab('rollback')" id="tab-rollback" class="tab-btn px-4 py-2 rounded-lg flex items-center gap-2 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+        <i data-lucide="undo-2" class="w-4 h-4"></i>
+        <span>سجل الجلسات والتراجع</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="panel-dashboard" class="space-y-6">
+      <!-- Health Score Hero Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <!-- Overall Score -->
+        <div class="bg-gradient-to-br from-slate-900 to-slate-800 p-4 rounded-2xl border border-slate-700/80 shadow-lg relative overflow-hidden">
+          <div class="text-xs font-semibold text-slate-400 mb-1">الصحة العامة</div>
+          <div id="score-overall" class="text-3xl font-black text-emerald-400 tracking-tight font-mono">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">مؤشر كفاءة العتاد</div>
+        </div>
+        <!-- CPU Score -->
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow relative">
+          <div class="text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+            <span>المعالج (CPU)</span>
+            <i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="score-cpu" class="text-2xl font-bold text-slate-100 font-mono">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">خطة الطاقة والإقلاع</div>
+        </div>
+        <!-- GPU Score -->
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow relative">
+          <div class="text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+            <span>الرسوميات (GPU)</span>
+            <i data-lucide="monitor" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="score-gpu" class="text-2xl font-bold text-slate-100 font-mono">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">HAGS ومفاضلة dGPU</div>
+        </div>
+        <!-- RAM Score -->
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow relative">
+          <div class="text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+            <span>الذاكرة (RAM)</span>
+            <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="score-ram" class="text-2xl font-bold text-slate-100 font-mono">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">القنوات وضغط الذاكرة</div>
+        </div>
+        <!-- Storage Score -->
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow relative">
+          <div class="text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+            <span>التخزين (Storage)</span>
+            <i data-lucide="hard-drive" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="score-storage" class="text-2xl font-bold text-slate-100 font-mono">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">TRIM و ReTrim</div>
+        </div>
+        <!-- Power Score -->
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow relative">
+          <div class="text-xs font-semibold text-slate-400 mb-1 flex items-center justify-between">
+            <span>الطاقة والحرارة</span>
+            <i data-lucide="battery-charging" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div id="score-power" class="text-2xl font-bold text-slate-100 font-mono">--</div>
+          <div class="text-[11px] text-slate-400 mt-2">صحة البطارية والحرارة</div>
+        </div>
+      </div>
+
+      <!-- Live Telemetry Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- CPU Live Card -->
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+              استهلاك المعالج اللحظي (Live CPU Load)
+            </h3>
+            <span id="telemetry-cpu-val" class="font-mono text-emerald-400 font-bold text-sm">--%</span>
+          </div>
+          <div class="h-44 w-full relative">
+            <canvas id="cpuChart"></canvas>
+          </div>
+          <div id="cpuCoresContainer" class="grid grid-cols-6 gap-1.5 pt-2 border-t border-slate-800 text-center text-[10px] text-slate-400 font-mono">
+            <!-- Cores rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- RAM & Disk IO Card -->
+        <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 shadow space-y-5">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                <i data-lucide="database" class="w-4 h-4 text-emerald-400"></i>
+                استهلاك الذاكرة العشوائية (RAM Usage)
+              </h3>
+              <span id="telemetry-ram-val" class="font-mono text-slate-300 text-sm">--</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+              <div id="ramProgressBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-3 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+          </div>
+
+          <!-- Disk Throughput -->
+          <div class="pt-4 border-t border-slate-800">
+            <h3 class="text-sm font-bold text-slate-200 mb-3 flex items-center gap-2">
+              <i data-lucide="hard-drive" class="w-4 h-4 text-emerald-400"></i>
+              معدل قراءة وكتابة القرص (Disk I/O)
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                <div class="text-xs text-slate-400">معدل القراءة (Read)</div>
+                <div id="telemetry-disk-read" class="text-lg font-mono font-bold text-emerald-400 mt-1">0.0 MB/s</div>
+              </div>
+              <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60">
+                <div class="text-xs text-slate-400">معدل الكتابة (Write)</div>
+                <div id="telemetry-disk-write" class="text-lg font-mono font-bold text-teal-400 mt-1">0.0 MB/s</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DIAGNOSTICS & INVENTORY -->
+    <section id="panel-diagnostics" class="hidden space-y-6">
+      <div class="bg-slate-900/80 p-5 rounded-2xl border border-slate-800 space-y-4">
+        <h2 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-400"></i>
+          المواصفات المكتشفة واختناقات العتاد (Hardware Inventory)
+        </h2>
+        <div id="inventoryContainer" class="space-y-4 text-sm">
+          <!-- Rendered dynamically -->
+          <div class="text-slate-400 animate-pulse">جارٍ استدعاء بيانات العتاد المكتشفة...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: RECOMMENDATIONS -->
+    <section id="panel-recommendations" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-5 h-5 text-emerald-400"></i>
+            التحسينات المقترحة لجهازك (AI-Ranked Recommendations)
+          </h2>
+          <p id="llmEngineNotice" class="text-xs text-slate-400 mt-0.5">تحليل وترتيب أولويات بالذكاء الاصطناعي GLM-5.3-Flash</p>
+        </div>
+        <button onclick="goToApplyTab()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow">
+          <span>الانتقال للتطبيق</span>
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div id="recommendationsList" class="space-y-4">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- TAB 4: APPLY -->
+    <section id="panel-apply" class="hidden space-y-6">
+      <div class="bg-slate-900/90 p-6 rounded-2xl border border-slate-800 space-y-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="shield-check" class="w-6 h-6 text-emerald-400"></i>
+              بوابة التطبيق الآمن (Safety Execution Gate)
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">يتم إنشاء نقطة استعادة تلقائية (System Restore Point) وتوليد نسخة احتياطية لحالة النظام قبل أي تعديل.</p>
+          </div>
+          <button onclick="selectAllTier1()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-emerald-400 border border-slate-700 rounded-lg transition">
+            تحديد كافة تحسينات Tier 1 الآمنة
+          </button>
+        </div>
+
+        <!-- Checklist of actions -->
+        <div id="applyChecklist" class="space-y-3">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <!-- Execution Action Bar -->
+        <div class="pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="text-xs text-slate-400 flex items-center gap-2">
+            <i data-lucide="info" class="w-4 h-4 text-emerald-400"></i>
+            <span>التطبيق محمي بحوكمة UAC والـ Allowlist الصارمة (Zero Shell Injection).</span>
+          </div>
+          <button id="executeApplyBtn" onclick="executeSelectedActions()" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition flex items-center justify-center gap-2">
+            <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+            <span>تطبيق التحسينات المحددة الآن</span>
+          </button>
+        </div>
+
+        <!-- Execution Log Box -->
+        <div id="executionLogBox" class="hidden bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono text-xs space-y-2">
+          <div class="text-slate-400 font-bold border-b border-slate-800 pb-1">سجل التنفيذ اللحظي (Execution Audit Log):</div>
+          <div id="executionLogContent" class="space-y-1 text-slate-300"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: BEFORE / AFTER -->
+    <section id="panel-beforeAfter" class="hidden space-y-6">
+      <div class="bg-slate-900/90 p-6 rounded-2xl border border-slate-800 space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="git-compare" class="w-5 h-5 text-emerald-400"></i>
+            مقارنة المقاييس قبل وبعد التحسين (Before vs After)
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">قياس التغير الفعلي في استهلاك المعالج، والذاكرة المحررة، ومؤشر الصحة العام.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center space-y-2">
+            <div class="text-xs text-slate-400 font-semibold">مؤشر الصحة العام (Health Score)</div>
+            <div class="flex items-center justify-center gap-4 text-2xl font-mono font-bold">
+              <span id="diff-score-before" class="text-slate-400">--</span>
+              <i data-lucide="arrow-left" class="w-5 h-5 text-emerald-400"></i>
+              <span id="diff-score-after" class="text-emerald-400">--</span>
+            </div>
+            <div id="diff-score-delta" class="text-xs text-emerald-400 font-semibold">--</div>
+          </div>
+
+          <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center space-y-2">
+            <div class="text-xs text-slate-400 font-semibold">استهلاك المعالج الخامل (Idle CPU)</div>
+            <div class="flex items-center justify-center gap-4 text-2xl font-mono font-bold">
+              <span id="diff-cpu-before" class="text-slate-400">--%</span>
+              <i data-lucide="arrow-left" class="w-5 h-5 text-emerald-400"></i>
+              <span id="diff-cpu-after" class="text-emerald-400">--%</span>
+            </div>
+            <div id="diff-cpu-delta" class="text-xs text-emerald-400 font-semibold">--</div>
+          </div>
+
+          <div class="bg-slate-950 p-5 rounded-xl border border-slate-800 text-center space-y-2">
+            <div class="text-xs text-slate-400 font-semibold">الذاكرة المحررة (RAM Allocation)</div>
+            <div class="flex items-center justify-center gap-4 text-2xl font-mono font-bold">
+              <span id="diff-ram-before" class="text-slate-400">--%</span>
+              <i data-lucide="arrow-left" class="w-5 h-5 text-emerald-400"></i>
+              <span id="diff-ram-after" class="text-emerald-400">--%</span>
+            </div>
+            <div id="diff-ram-delta" class="text-xs text-emerald-400 font-semibold">--</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: ROLLBACK & HISTORY -->
+    <section id="panel-rollback" class="hidden space-y-6">
+      <div class="bg-slate-900/90 p-6 rounded-2xl border border-slate-800 space-y-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <i data-lucide="history" class="w-5 h-5 text-emerald-400"></i>
+              سجل الجلسات والتراجع الفوري (Rollback & Ledger)
+            </h2>
+            <p class="text-xs text-slate-400 mt-1">كافة التغييرات موثقة برقم الجلسة ويمكن التراجع عنها بنقرة واحدة أو عبر الطرفية الاحتياطية.</p>
+          </div>
+          <button onclick="loadHistory()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 rounded-lg transition flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>تحديث السجل</span>
+          </button>
+        </div>
+
+        <div id="historySessionsList" class="space-y-4">
+          <!-- Rendered dynamically -->
+          <div class="text-slate-400 text-xs">جارٍ قراءة سجل الجلسات...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div>Autovemtech Multi-CLI Fleet Governance • Hook 31 Windows Hardware Diagnostics</div>
+      <div class="font-mono text-slate-400">API Endpoint: 127.0.0.1:8000 • Safety Allowlist Active</div>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script>
+    let sessionToken = "";
+    let activeSessionId = "";
+    let cachedRecommendations = [];
+    let cpuHistory = Array(20).fill(0);
+    let cpuChart = null;
+
+    // Extract token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    sessionToken = urlParams.get('token') || "";
+
+    function authHeaders() {
+      return {
+        "Content-Type": "application/json",
+        "X-Session-Token": sessionToken
+      };
+    }
+
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/30');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activePanel = document.getElementById(`panel-${tabId}`);
+      const activeTabBtn = document.getElementById(`tab-${tabId}`);
+      if (activePanel) activePanel.classList.remove('hidden');
+      if (activeTabBtn) {
+        activeTabBtn.classList.add('bg-emerald-500/10', 'text-emerald-400', 'border', 'border-emerald-500/30');
+        activeTabBtn.classList.remove('text-slate-400');
+      }
+
+      if (tabId === 'diagnostics') loadInventory();
+      if (tabId === 'rollback') loadHistory();
+    }
+
+    function goToApplyTab() {
+      switchTab('apply');
+    }
+
+    // Initialize Chart
+    function initChart() {
+      const ctx = document.getElementById('cpuChart');
+      if (!ctx) return;
+      cpuChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array(20).fill(''),
+          datasets: [{
+            data: cpuHistory,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false },
+            y: { min: 0, max: 100, grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono' } } }
+          }
+        }
+      });
+    }
+
+    // Live Telemetry Loop
+    async function startTelemetryLoop() {
+      try {
+        const res = await fetch('/api/telemetry/live');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('telemetry-cpu-val').innerText = `${Math.round(data.cpu_percent)}%`;
+          document.getElementById('telemetry-ram-val').innerText = `${Math.round(data.ram_used_percent)}% (${(data.ram_available_bytes / 1e9).toFixed(1)} GB متاح)`;
+          document.getElementById('ramProgressBar').style.width = `${Math.round(data.ram_used_percent)}%`;
+
+          document.getElementById('telemetry-disk-read').innerText = `${(data.disk_read_bytes_sec / 1e6).toFixed(1)} MB/s`;
+          document.getElementById('telemetry-disk-write').innerText = `${(data.disk_write_bytes_sec / 1e6).toFixed(1)} MB/s`;
+
+          // Update Chart
+          cpuHistory.push(data.cpu_percent);
+          cpuHistory.shift();
+          if (cpuChart) {
+            cpuChart.data.datasets[0].data = cpuHistory;
+            cpuChart.update('none');
+          }
+
+          // Render Cores
+          const coresContainer = document.getElementById('cpuCoresContainer');
+          if (coresContainer && data.cpu_cores) {
+            coresContainer.innerHTML = data.cpu_cores.map((c, i) => `
+              <div class="bg-slate-800/80 p-1 rounded border border-slate-700/50">
+                <span class="block text-[9px] text-slate-400">C${i+1}</span>
+                <span class="font-bold text-emerald-400">${Math.round(c)}%</span>
+              </div>
+            `).join('');
+          }
+        }
+      } catch (err) {
+        console.error("Telemetry fetch error:", err);
+      }
+      setTimeout(startTelemetryLoop, 1500);
+    }
+
+    // Full Scan & Recommendations
+    async function runFullScan() {
+      const btn = document.getElementById('rescanBtn');
+      btn.classList.add('opacity-50', 'pointer-events-none');
+      btn.innerHTML = `<span>جارٍ الفحص...</span>`;
+
+      try {
+        const res = await fetch(`/api/recommendations/analyze?token=${sessionToken}`, {
+          method: 'POST',
+          headers: authHeaders()
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          activeSessionId = data.session_id;
+          cachedRecommendations = data.recommendations;
+
+          // Update Health Scores
+          document.getElementById('score-overall').innerText = data.health_scores.overall;
+          document.getElementById('score-cpu').innerText = data.health_scores.cpu;
+          document.getElementById('score-gpu').innerText = data.health_scores.gpu;
+          document.getElementById('score-ram').innerText = data.health_scores.ram;
+          document.getElementById('score-storage').innerText = data.health_scores.storage;
+          document.getElementById('score-power').innerText = data.health_scores.power;
+
+          // Update Recommendations Badge
+          const badge = document.getElementById('recsBadge');
+          badge.innerText = data.recommendations.length;
+          badge.classList.remove('hidden');
+
+          document.getElementById('llmEngineNotice').innerText = data.notice_ar || "تحليل وترتيب أولويات بالذكاء الاصطناعي GLM-5.3-Flash";
+
+          renderRecommendations(data.recommendations);
+          renderApplyChecklist(data.recommendations);
+        }
+      } catch (err) {
+        console.error("Scan error:", err);
+      } finally {
+        btn.classList.remove('opacity-50', 'pointer-events-none');
+        btn.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i><span>إعادة الفحص الذكي</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    function renderRecommendations(recs) {
+      const container = document.getElementById('recommendationsList');
+      if (!recs || recs.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-slate-400 bg-slate-900 rounded-xl border border-slate-800">جهازك يعمل بأفضل إعدادات ممكنة! لا توجد تحسينات مطلوبة حالياً.</div>`;
+        return;
+      }
+
+      container.innerHTML = recs.map(r => `
+        <div class="bg-slate-900/90 p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition space-y-3">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs font-bold px-2 py-0.5 rounded-full ${r.tier === 1 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}">
+                  Tier ${r.tier} ${r.tier === 1 ? 'آمن وفوري' : 'تأكيد إداري'}
+                </span>
+                <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full font-mono">أولوية ${r.priority}/10</span>
+                ${r.requires_reboot ? '<span class="text-xs bg-rose-500/10 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full">يحتاج إعادة تشغيل</span>' : ''}
+              </div>
+              <h3 class="text-base font-bold text-white">${r.title_ar}</h3>
+            </div>
+            <span class="font-mono text-xs text-slate-400">${r.subsystem}</span>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+            ${r.rationale_ar}
+          </p>
+
+          <div class="flex flex-wrap items-center gap-3 text-xs font-mono pt-2 border-t border-slate-800">
+            <span class="text-slate-400">الحالي: <span class="text-rose-400">${r.current_value}</span></span>
+            <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-slate-500"></i>
+            <span class="text-slate-400">المقترح: <span class="text-emerald-400 font-bold">${r.proposed_value}</span></span>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function renderApplyChecklist(recs) {
+      const container = document.getElementById('applyChecklist');
+      container.innerHTML = recs.map(r => `
+        <label class="flex items-start gap-3 p-4 bg-slate-950 rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+          <input type="checkbox" value="${r.action_id}" ${r.tier === 1 ? 'checked' : ''} class="apply-checkbox w-4 h-4 mt-1 rounded bg-slate-800 border-slate-700 text-emerald-500 focus:ring-emerald-500">
+          <div class="flex-1 text-xs">
+            <div class="font-bold text-white text-sm flex items-center justify-between">
+              <span>${r.title_ar}</span>
+              <span class="text-[11px] font-mono text-slate-400">Tier ${r.tier}</span>
+            </div>
+            <div class="text-slate-400 mt-1">${r.rollback_summary_ar}</div>
+          </div>
+        </label>
+      `).join('');
+    }
+
+    function selectAllTier1() {
+      document.querySelectorAll('.apply-checkbox').forEach(cb => {
+        const rec = cachedRecommendations.find(r => r.action_id === cb.value);
+        if (rec && rec.tier === 1) cb.checked = true;
+      });
+    }
+
+    async function executeSelectedActions() {
+      const selected = Array.from(document.querySelectorAll('.apply-checkbox:checked')).map(cb => cb.value);
+      if (selected.length === 0) {
+        alert("يرجى اختيار إجراء واحد على الأقل للتطبيق.");
+        return;
+      }
+
+      const btn = document.getElementById('executeApplyBtn');
+      const logBox = document.getElementById('executionLogBox');
+      const logContent = document.getElementById('executionLogContent');
+
+      btn.classList.add('opacity-50', 'pointer-events-none');
+      logBox.classList.remove('hidden');
+      logContent.innerHTML = `<div>[1/3] جارٍ إنشاء نقطة استعادة النظام (Windows System Restore Point)...</div>`;
+
+      try {
+        const res = await fetch(`/api/apply?token=${sessionToken}`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: jsonPayload = JSON.stringify({
+            session_id: activeSessionId || `sess_${Date.now()}`,
+            selected_action_ids: selected
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.restore_point_created) {
+            logContent.innerHTML += `<div class="text-emerald-400">[2/3] تم إنشاء نقطة الاستعادة بنجاح: ${data.restore_point_id || 'تم'}</div>`;
+          } else {
+            logContent.innerHTML += `<div class="text-amber-400">[2/3] تم تخطي أو تعذر إنشاء نقطة الاستعادة (قد تكون خاصية حماية النظام معطلة أو تتطلب صلاحيات مسؤول إضافية).</div>`;
+          }
+          data.results.forEach(r => {
+            logContent.innerHTML += `<div class="${r.success ? 'text-emerald-400' : 'text-rose-400'}">[3/3] ${r.message_ar}</div>`;
+          });
+          if (data.success) {
+            logContent.innerHTML += `<div class="text-emerald-400 font-bold mt-2">✓ اكتملت عملية التطبيق بنجاح تام!</div>`;
+          } else {
+            logContent.innerHTML += `<div class="text-amber-400 font-bold mt-2">⚠️ تم إنهاء العملية مع وجود تنبيهات أو فشل في بعض الإجراءات. راجع السجل أعلاه.</div>`;
+          }
+          
+          // Re-scan after 2 seconds to refresh before/after
+          setTimeout(runFullScan, 2000);
+        } else {
+          logContent.innerHTML += `<div class="text-rose-400 font-bold">فشل الإرسال: استجابة خطأ من الخادم.</div>`;
+        }
+      } catch (err) {
+        logContent.innerHTML += `<div class="text-rose-400 font-bold">خطأ في الاتصال: ${err}</div>`;
+      } finally {
+        btn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    async function loadInventory() {
+      const container = document.getElementById('inventoryContainer');
+      try {
+        const res = await fetch('/api/inventory');
+        if (res.ok) {
+          const inv = await res.json();
+          container.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="cpu" class="w-4 h-4"></i> المعالج المركزي</div>
+                <div class="text-slate-200">${inv.CPU?.Details?.Name || 'معالج متعدد الأنوية'}</div>
+                <div class="text-xs text-slate-400">الأنوية: ${inv.CPU?.Details?.NumberOfCores || 6} | الخيوط: ${inv.CPU?.Details?.NumberOfLogicalProcessors || 12} | برامج الإقلاع: ${inv.CPU?.StartupAppsCount || 0}</div>
+              </div>
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="monitor" class="w-4 h-4"></i> معالجات الرسوميات (GPU)</div>
+                <div class="text-slate-200">${(inv.GPU?.Controllers || []).map(g => g.Name).join(' + ') || 'GPU'}</div>
+                <div class="text-xs text-slate-400">HAGS: ${inv.GPU?.HAGSMode === 2 ? 'مفعل' : 'معطل'} | Game Mode: ${inv.GPU?.GameModeEnabled ? 'مفعل' : 'معطل'}</div>
+              </div>
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="database" class="w-4 h-4"></i> الذاكرة العشوائية (RAM)</div>
+                <div class="text-slate-200">الوحدات: ${inv.RAM?.TotalModules || 2} modules (Dual-Channel)</div>
+                <div class="text-xs text-slate-400">ضغط الذاكرة: ${inv.RAM?.MemoryManagement?.MemoryCompression ? 'مفعل' : 'معطل'}</div>
+              </div>
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+                <div class="font-bold text-emerald-400 flex items-center gap-2"><i data-lucide="hard-drive" class="w-4 h-4"></i> الأقراص والتخزين (Storage)</div>
+                <div class="text-slate-200">${(inv.Storage?.Disks || []).map(d => `${d.FriendlyName} (${d.MediaType})`).join(' | ')}</div>
+                <div class="text-xs text-slate-400">بروتوكول TRIM: ${inv.Storage?.TrimStatusRaw?.includes('0') ? 'مفعل (نشط)' : 'معطل'}</div>
+              </div>
+            </div>
+          `;
+          lucide.createIcons();
+        }
+      } catch (err) {
+        container.innerHTML = `<div class="text-rose-400">تعذر تحميل جرد العتاد: ${err}</div>`;
+      }
+    }
+
+    async function loadHistory() {
+      const container = document.getElementById('historySessionsList');
+      try {
+        const res = await fetch('/api/history');
+        if (res.ok) {
+          const data = await res.json();
+          const sessions = data.sessions || [];
+          if (sessions.length === 0) {
+            container.innerHTML = `<div class="text-slate-400 text-xs text-center py-6">لا توجد جلسات تحسين سابقة مسجلة.</div>`;
+            return;
+          }
+
+          container.innerHTML = sessions.map(s => `
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4">
+              <div>
+                <div class="font-mono text-sm font-bold text-white">${s.session_id}</div>
+                <div class="text-xs text-slate-400">${new Date(s.created_at).toLocaleString('ar-SA')} • ${s.actions.length} إجراءات مطبقة</div>
+              </div>
+              <button onclick="rollbackSession('${s.session_id}')" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-semibold rounded-lg border border-rose-500/30 transition flex items-center gap-1.5">
+                <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+                <span>تراجع عن الجلسة</span>
+              </button>
+            </div>
+          `).join('');
+          lucide.createIcons();
+        }
+      } catch (err) {
+        container.innerHTML = `<div class="text-rose-400">تعذر تحميل السجل: ${err}</div>`;
+      }
+    }
+
+    async function rollbackSession(sid) {
+      if (!confirm(`هل أنت متأكد من رغبتك في التراجع عن كافة تعديلات الجلسة ${sid}؟`)) return;
+      try {
+        const res = await fetch(`/api/rollback?token=${sessionToken}`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ session_id: sid })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            alert("تم التراجع عن الجلسة بنجاح!");
+          } else {
+            alert("تم التراجع جزئياً مع وجود تنبيهات أو تعذر التراجع عن بعض الإجراءات.");
+          }
+          loadHistory();
+          runFullScan();
+        }
+      } catch (err) {
+        alert("فشل التراجع: " + err);
+      }
+    }
+
+    // Startup
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initChart();
+      startTelemetryLoop();
+      runFullScan();
+    });
+  </script>
+</body>
+</html>

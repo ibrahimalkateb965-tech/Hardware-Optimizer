@@ -15,7 +15,7 @@ venv/
 .venv/
 build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -31,9 +31,9 @@ wheels/
 
 # Node / Frontend
 node_modules/
-dist/
 .vite/
 *.local
+!frontend/dist/**
 
 # Logs and Session Dumps
 *.log
