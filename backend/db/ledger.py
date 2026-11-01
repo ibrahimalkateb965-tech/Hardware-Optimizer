@@ -106,10 +106,75 @@ class StateLedger:
                     (now_str, session_id, act_id.value)
                 )
 
+    def update_session_health_after(self, session_id: str, health_score_after: int) -> None:
+        with self._connection() as conn:
+            conn.execute(
+                "UPDATE sessions SET health_score_after = ? WHERE session_id = ?",
+                (health_score_after, session_id)
+            )
+
+    def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
+        with self._connection() as conn:
+            row = conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,)).fetchone()
+            return dict(row) if row else None
+
     def get_latest_session_id(self) -> Optional[str]:
         with self._connection() as conn:
             row = conn.execute("SELECT session_id FROM sessions ORDER BY created_at DESC LIMIT 1").fetchone()
             return row["session_id"] if row else None
+
+    def get_comparison(self, session_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        with self._connection() as conn:
+            if not session_id:
+                # Find latest session that has an 'after' snapshot, or latest session
+                row = conn.execute("""
+                    SELECT s.session_id FROM sessions s
+                    JOIN metrics_snapshots m ON s.session_id = m.session_id AND m.phase = 'after'
+                    ORDER BY s.created_at DESC LIMIT 1
+                """).fetchone()
+                if row:
+                    session_id = row["session_id"]
+                else:
+                    row = conn.execute("SELECT session_id FROM sessions ORDER BY created_at DESC LIMIT 1").fetchone()
+                    if row:
+                        session_id = row["session_id"]
+                    else:
+                        return None
+
+            session = conn.execute("SELECT * FROM sessions WHERE session_id = ?", (session_id,)).fetchone()
+            if not session:
+                return None
+
+            before_snap = conn.execute(
+                "SELECT * FROM metrics_snapshots WHERE session_id = ? AND phase = 'before' ORDER BY timestamp ASC LIMIT 1",
+                (session_id,)
+            ).fetchone()
+
+            after_snap = conn.execute(
+                "SELECT * FROM metrics_snapshots WHERE session_id = ? AND phase = 'after' ORDER BY timestamp DESC LIMIT 1",
+                (session_id,)
+            ).fetchone()
+
+            actions = conn.execute("SELECT * FROM applied_actions WHERE session_id = ?", (session_id,)).fetchall()
+
+            return {
+                "session_id": session_id,
+                "status": session["status"],
+                "created_at": session["created_at"],
+                "health_score_before": session["health_score_before"],
+                "health_score_after": session["health_score_after"],
+                "before": {
+                    "cpu_percent": round(before_snap["cpu_percent"], 1) if before_snap and before_snap["cpu_percent"] is not None else None,
+                    "ram_used_percent": round(before_snap["ram_used_percent"], 1) if before_snap and before_snap["ram_used_percent"] is not None else None,
+                    "timestamp": before_snap["timestamp"] if before_snap else None,
+                } if before_snap else None,
+                "after": {
+                    "cpu_percent": round(after_snap["cpu_percent"], 1) if after_snap and after_snap["cpu_percent"] is not None else None,
+                    "ram_used_percent": round(after_snap["ram_used_percent"], 1) if after_snap and after_snap["ram_used_percent"] is not None else None,
+                    "timestamp": after_snap["timestamp"] if after_snap else None,
+                } if after_snap else None,
+                "actions": [dict(a) for a in actions]
+            }
 
     def get_session_history(self) -> List[Dict[str, Any]]:
         with self._connection() as conn:

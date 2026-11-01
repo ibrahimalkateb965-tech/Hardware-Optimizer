@@ -24,6 +24,19 @@ def test_ledger_session_and_rollback_flow():
             )
         ]
         ledger.record_applied_actions(session_id, results, restore_point_created=True)
+        ledger.record_snapshot(session_id, "after", cpu_percent=5.0, ram_used_percent=48.0)
+        ledger.update_session_health_after(session_id, 90)
+
+        # Verify comparison retrieval
+        comp = ledger.get_comparison(session_id)
+        assert comp is not None
+        assert comp["health_score_before"] == 75
+        assert comp["health_score_after"] == 90
+        assert comp["before"]["cpu_percent"] == 15.0
+        assert comp["after"]["cpu_percent"] == 5.0
+        assert comp["before"]["ram_used_percent"] == 55.0
+        assert comp["after"]["ram_used_percent"] == 48.0
+        assert len(comp["actions"]) == 1
 
         history = ledger.get_session_history()
         assert len(history) == 1
