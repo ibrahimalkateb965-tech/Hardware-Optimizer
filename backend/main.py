@@ -48,10 +48,10 @@ app = FastAPI(
     dependencies=[Depends(verify_host_header)]
 )
 
-# CORS dynamically configured for any local port on 127.0.0.1 or localhost
+# CORS limited to this server's own origin; other local ports (dev servers, other apps) must not read API responses
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^http://(127\.0\.0\.1|localhost)(:\d+)?$",
+    allow_origins=[f"http://127.0.0.1:{settings.PORT}", f"http://localhost:{settings.PORT}"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -85,7 +85,6 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0",
         "sandbox_mode": settings.SANDBOX_MODE,
-        "session_token": settings.SESSION_TOKEN
     }
 
 
@@ -183,6 +182,8 @@ async def apply_optimizations(
     """Executes validated allowlisted actions with automatic System Restore Point and UAC elevation."""
     if not req.selected_action_ids:
         raise HTTPException(status_code=400, detail="No optimization actions selected.")
+    if not ledger.get_session(req.session_id):
+        raise HTTPException(status_code=404, detail="Session not found in ledger.")
 
     # 1. Execute actions workflow (handles UAC elevation, restore point, and allowlist execution)
     res_data = execute_actions(
@@ -203,7 +204,8 @@ async def apply_optimizations(
     
     # Record post-apply snapshot
     mem = psutil.virtual_memory()
-    post_cpu = psutil.cpu_percent(interval=None)
+    # Sample over a real window; interval=None compares against an arbitrary earlier call
+    post_cpu = await asyncio.to_thread(psutil.cpu_percent, 1.0)
     post_ram = mem.percent
     ledger.record_snapshot(
         session_id=req.session_id,
@@ -216,7 +218,8 @@ async def apply_optimizations(
     session_info = ledger.get_session(req.session_id)
     before_score = session_info.get("health_score_before", 75) if session_info else 75
     successful_count = sum(1 for r in results if r.success)
-    after_score = min(100, (before_score or 75) + max(5, successful_count * 8))
+    # No successful action means no improvement: never report a gain that did not happen
+    after_score = min(100, (before_score or 75) + successful_count * 8) if successful_count else (before_score or 75)
     ledger.update_session_health_after(req.session_id, after_score)
 
     return ApplyResponse(
@@ -234,6 +237,8 @@ async def rollback_optimizations(
     _=Depends(verify_session_token)
 ):
     """Reverts applied optimizations for a session with UAC elevation support."""
+    if not ledger.get_session(req.session_id):
+        raise HTTPException(status_code=404, detail="Session not found in ledger.")
     target_actions = req.target_action_ids
     if not target_actions:
         # Load from ledger history
