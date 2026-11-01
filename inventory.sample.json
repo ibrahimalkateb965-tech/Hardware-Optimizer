@@ -1,0 +1,205 @@
+{
+  "CollectedAt": "2026-11-01T13:08:27Z",
+  "OperatingSystem": {
+    "Caption": "Microsoft Windows 11 Pro",
+    "Version": "10.0.26300",
+    "OSArchitecture": "64-bit",
+    "TotalVisibleMemorySize": 16565952,
+    "FreePhysicalMemory": 1403952,
+    "NumberOfProcesses": 364
+  },
+  "ComputerSystem": {
+    "Model": "G3 3500",
+    "SystemType": "x64-based PC",
+    "TotalPhysicalMemory": 16963534848,
+    "NumberOfProcessors": 1,
+    "NumberOfLogicalProcessors": 12
+  },
+  "CPU": {
+    "StartupAppsCount": 18,
+    "ActivePowerScheme": "Power Scheme GUID: [GUID]  (Balanced)",
+    "Details": {
+      "Name": "Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz",
+      "Manufacturer": "GenuineIntel",
+      "NumberOfCores": 6,
+      "NumberOfLogicalProcessors": 12,
+      "MaxClockSpeed": 2592,
+      "CurrentClockSpeed": 2592,
+      "L2CacheSize": 1536,
+      "L3CacheSize": 12288,
+      "Architecture": 9
+    },
+    "StartupSample": [
+      {
+        "Name": "GoogleDriveFS",
+        "Location": "HKU\\S-1-5-18\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "Ollama",
+        "Location": "Startup"
+      },
+      {
+        "Name": "OneDrive",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "IDMan",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "Microsoft.Lists",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "GoogleDriveFS",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "ut",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "Sideloadly Daemon",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "MicrosoftEdgeAutoLaunch_9370EF5F14E242E31062385E32FE7E38",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      },
+      {
+        "Name": "Opera Browser Assistant",
+        "Location": "HKU\\S-1-5-21-2158833273-378902289-3443419669-1001\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
+      }
+    ]
+  },
+  "GPU": {
+    "Controllers": [
+      {
+        "Name": "NVIDIA GeForce GTX 1650",
+        "AdapterRAM": 4293918720,
+        "DriverVersion": "32.0.15.7700",
+        "DriverDate": "/Date(1752451200000)/",
+        "VideoProcessor": "NVIDIA GeForce GTX 1650",
+        "CurrentHorizontalResolution": 1920,
+        "CurrentVerticalResolution": 1080,
+        "Status": "OK"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics",
+        "AdapterRAM": 1073741824,
+        "DriverVersion": "31.0.101.2125",
+        "DriverDate": "/Date(1684886400000)/",
+        "VideoProcessor": "Intel(R) UHD Graphics Family",
+        "CurrentHorizontalResolution": 1920,
+        "CurrentVerticalResolution": 1080,
+        "Status": "OK"
+      }
+    ],
+    "GameModeEnabled": {},
+    "HAGSMode": {}
+  },
+  "RAM": {
+    "Modules": [
+      {
+        "DeviceLocator": "DIMM A",
+        "Capacity": 8589934592,
+        "Speed": 3200,
+        "ConfiguredClockSpeed": 2933,
+        "FormFactor": 12,
+        "PartNumber": "HMAA1GS6CJR6N-XN    "
+      },
+      {
+        "DeviceLocator": "DIMM B",
+        "Capacity": 8589934592,
+        "Speed": 3200,
+        "ConfiguredClockSpeed": 2933,
+        "FormFactor": 12,
+        "PartNumber": "HMA81GS6DJR8N-XN    "
+      }
+    ],
+    "TotalModules": 2,
+    "MemoryManagement": {},
+    "PageFiles": [
+      {
+        "Name": "C:\\pagefile.sys",
+        "AllocatedBaseSize": 4096,
+        "CurrentUsage": 556,
+        "PeakUsage": 739
+      },
+      {
+        "Name": "D:\\pagefile.sys",
+        "AllocatedBaseSize": 16384,
+        "CurrentUsage": 249,
+        "PeakUsage": 287
+      }
+    ]
+  },
+  "Storage": {
+    "TrimStatusRaw": "NTFS DisableDeleteNotify = 0  (Allows TRIM operations to be sent to the storage device) ReFS DisableDeleteNotify = 0  (Allows TRIM operations to be sent to the storage device)",
+    "Volumes": [
+      {
+        "DriveLetter": "F",
+        "FileSystemLabel": "New Volume",
+        "FileSystemType": "NTFS",
+        "SizeRemaining": 12362854400,
+        "Size": 249561083904
+      },
+      {
+        "DriveLetter": "E",
+        "FileSystemLabel": "FUNNY",
+        "FileSystemType": "NTFS",
+        "SizeRemaining": 49550462976,
+        "Size": 249561083904
+      },
+      {
+        "DriveLetter": "C",
+        "FileSystemLabel": "",
+        "FileSystemType": "NTFS",
+        "SizeRemaining": 11093884928,
+        "Size": 253337849856
+      },
+      {
+        "DriveLetter": "G",
+        "FileSystemLabel": "WORK",
+        "FileSystemType": "NTFS",
+        "SizeRemaining": 90487398400,
+        "Size": 251503046656
+      },
+      {
+        "DriveLetter": "D",
+        "FileSystemLabel": "New Volume",
+        "FileSystemType": "NTFS",
+        "SizeRemaining": 16568627200,
+        "Size": 249561083904
+      }
+    ],
+    "Disks": [
+      {
+        "FriendlyName": "IM2P33F3 NVMe ADATA 256GB",
+        "MediaType": "SSD",
+        "BusType": "NVMe",
+        "Size": 256060514304,
+        "OperationalStatus": "OK",
+        "HealthStatus": "Healthy"
+      },
+      {
+        "FriendlyName": "ST1000LM035-1RK172",
+        "MediaType": "HDD",
+        "BusType": "SATA",
+        "Size": 1000204886016,
+        "OperationalStatus": "OK",
+        "HealthStatus": "Healthy"
+      }
+    ]
+  },
+  "PowerThermal": {
+    "Battery": {
+      "EstimatedChargeRemaining": 100,
+      "BatteryStatus": 2,
+      "DesignCapacity": null,
+      "FullChargeCapacity": null
+    },
+    "ThermalZones": {},
+    "PowerPlansRaw": " Existing Power Schemes (* Active) ----------------------------------- Power Scheme GUID: [GUID]  (Balanced) *"
+  }
+}
