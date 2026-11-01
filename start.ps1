@@ -31,26 +31,9 @@ if (Test-Path $ActivateScript) {
 # 4. Requirements
 if (Test-Path "requirements.txt") {
     Write-Host "[*] Checking Python dependencies..." -ForegroundColor Yellow
-    pip install -r requirements.txt --quiet
+    python -m pip install -r requirements.txt --quiet
 }
 
-# 5. Launch FastAPI backend
-Write-Host "[*] Starting FastAPI Backend on 127.0.0.1:8000..." -ForegroundColor Green
-$ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-$ProcessInfo.FileName = "python"
-$ProcessInfo.Arguments = "-m uvicorn backend.main:app --host 127.0.0.1 --port 8000"
-$ProcessInfo.UseShellExecute = $false
-$Process = [System.Diagnostics.Process]::Start($ProcessInfo)
-
-Start-Sleep -Seconds 2
-
-# 6. Open Browser
-Start-Process "http://127.0.0.1:8000/"
-
-Write-Host "[✓] Hardware Optimizer is now active at http://127.0.0.1:8000/" -ForegroundColor Green
-Write-Host "Press [Enter] to terminate the local server..." -ForegroundColor Gray
-Read-Host
-
-if (-not $Process.HasExited) {
-    $Process.Kill()
-}
+# 5. Launch through dynamic port manager
+Write-Host "[*] Launching application runner (Auto-Port Detection active)..." -ForegroundColor Green
+python run.py

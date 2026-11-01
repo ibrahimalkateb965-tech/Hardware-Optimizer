@@ -43,15 +43,10 @@ app = FastAPI(
     dependencies=[Depends(verify_host_header)]
 )
 
-# CORS restricted strictly to localhost
+# CORS dynamically configured for any local port on 127.0.0.1 or localhost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        f"http://127.0.0.1:{settings.PORT}",
-        f"http://localhost:{settings.PORT}",
-        "http://127.0.0.1:5173",  # Vite Dev
-        "http://localhost:5173",
-    ],
+    allow_origin_regex=r"^http://(127\.0\.0\.1|localhost)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
@@ -257,7 +252,9 @@ async def get_history():
 
 # Mount static frontend build if dist exists
 if FRONTEND_DIST_DIR.exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST_DIR / "assets")), name="assets")
+    assets_dir = FRONTEND_DIST_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):

@@ -26,22 +26,21 @@ if not exist ".venv" (
 )
 
 :: 3. Activate virtual environment
-call .venv\Scripts\activate.bat
+if exist ".venv\Scripts\activate.bat" (
+    call .venv\Scripts\activate.bat
+)
 
-:: 4. Install dependencies if needed
-echo [*] Verifying backend dependencies...
-pip install -r requirements.txt -q
+:: 4. Verify backend dependencies
+echo [*] Checking Python dependencies...
+python -m pip install -r requirements.txt --quiet
 
-:: 5. Launch FastAPI backend
-echo [*] Starting local optimization server on 127.0.0.1:8000...
-start /b python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
-
-:: 6. Wait for server and open browser
-timeout /t 2 /nobreak >nul
-echo [*] Launching web interface...
-start http://127.0.0.1:8000/
-
+:: 5. Launch through dynamic port manager and auto-browser launcher
+echo [*] Launching application runner (Auto-Port Detection active)...
 echo.
-echo [✓] System is running. Press any key to stop the server.
-pause >nul
-taskkill /f /im python.exe >nul 2>nul
+python run.py
+
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo [!] Server exited with an error code.
+    pause
+)

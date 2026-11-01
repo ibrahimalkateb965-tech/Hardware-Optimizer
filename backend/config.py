@@ -20,7 +20,7 @@ if ENV_FILE.exists():
 
 class Settings:
     HOST: str = os.getenv("HOST", "127.0.0.1")
-    PORT: int = int(os.getenv("PORT", "8000"))
+    PORT: int = int(os.getenv("PORT", "8555"))
     
     # OpenCode Go / GLM-5.3-Flash API
     OPENCODE_GO_API_KEY: str = os.getenv("OPENCODE_GO_API_KEY", "")
