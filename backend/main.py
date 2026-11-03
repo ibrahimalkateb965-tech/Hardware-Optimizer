@@ -76,6 +76,8 @@ async def on_startup():
     logger.info(f"🔑 Session Security Token: {settings.SESSION_TOKEN}")
     logger.info(f"🤖 LLM Assisted Engine: {settings.OPENCODE_GO_MODEL}")
     logger.info("=" * 60)
+    # Warm the inventory cache so the first diagnostics view does not wait on PowerShell
+    asyncio.create_task(orchestrator.get_full_inventory())
 
 
 @app.get("/api/health")
@@ -129,9 +131,9 @@ async def get_live_telemetry():
 
 
 @app.get("/api/inventory")
-async def get_inventory(sandbox: bool = False, profile: str = "default"):
-    """Collects comprehensive 5-subsystem inventory with 3.0s timeout envelopes."""
-    return await orchestrator.get_full_inventory(force_sandbox=sandbox, profile_name=profile)
+async def get_inventory(sandbox: bool = False, profile: str = "default", refresh: bool = False):
+    """Returns the hardware inventory (cached for a few minutes; refresh=true re-collects)."""
+    return await orchestrator.get_full_inventory(force_sandbox=sandbox, profile_name=profile, refresh=refresh)
 
 
 @app.post("/api/recommendations/analyze", response_model=RecommendationsResponse)
@@ -191,6 +193,8 @@ async def apply_optimizations(
         session_id=req.session_id,
         action_ids=req.selected_action_ids
     )
+    # Applied actions change system state: the next scan must not reuse the cache
+    orchestrator.invalidate_cache()
 
     results: List[ActionResult] = [
         ActionResult(**r) if isinstance(r, dict) else r for r in res_data.get("results", [])
@@ -254,6 +258,7 @@ async def rollback_optimizations(
         session_id=req.session_id,
         action_ids=target_actions
     )
+    orchestrator.invalidate_cache()
 
     results: List[ActionResult] = [
         ActionResult(**r) if isinstance(r, dict) else r for r in res_data.get("results", [])
